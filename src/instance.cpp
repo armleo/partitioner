@@ -18,3 +18,5 @@ float Instance::getY() const {
 float Instance::distanceTo(const Instance& other) const {
     return std::fabs(x - other.x) + std::fabs(y - other.y);
 }
+
+

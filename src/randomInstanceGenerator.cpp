@@ -21,7 +21,7 @@ std::string RandomInstanceGenerator::randomName(size_t length) {
         "abcdefghijklmnopqrstuvwxyz"
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         "0123456789";
-    std::uniform_int_distribution<size_t> dist(0, charset.length());
+    std::uniform_int_distribution<size_t> dist(0, charset.length() - 1);
 
 
     std::string result;
