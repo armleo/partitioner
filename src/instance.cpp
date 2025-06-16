@@ -24,3 +24,8 @@ float Instance::distanceTo(const Instance& other) const {
 }
 
 
+bool Instance::operator==(const Instance& other) const {
+    return name == other.name && x == other.x && y == other.y && bitsize == other.bitsize;
+}
+
+

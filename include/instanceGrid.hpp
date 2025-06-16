@@ -22,10 +22,11 @@ public:
     void readInstancesFromFile(const std::string& filename);
     void generateRandomInstancesToFile(const std::string& filename, size_t count,
                                        float minX, float maxX, float minY, float maxY, size_t nameLength);
-
+        
+    std::unordered_map<std::pair<int, int>, std::vector<Instance>, PairHash> grid;
 private:
     float binSize;
-    std::unordered_map<std::pair<int, int>, std::vector<Instance>, PairHash> grid;
+    
 
     std::pair<int, int> getCell(float x, float y) const;
 };

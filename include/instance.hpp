@@ -14,9 +14,23 @@ public:
     // Calculates Manhattan distance to another instance
     float distanceTo(const Instance& other) const;
 
+    bool operator==(const Instance& other) const;
+
+
 private:
     std::string name;
     float x;
     float y;
     unsigned int bitsize;
+};
+
+
+namespace std {
+    template<>
+    struct hash<Instance> {
+        std::size_t operator()(const Instance& inst) const {
+            std::size_t h1 = std::hash<std::string>()(inst.getName());
+            return h1;
+        }
+    };
 };

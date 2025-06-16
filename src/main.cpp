@@ -13,12 +13,20 @@ int main(int argc, char** argv) {
     instgrid.generateRandomInstancesToFile("outfile.txt", 1000000, 0.0f, 100.0f, 0.0f, 200.0f, 8);
     instgrid.readInstancesFromFile("outfile.txt");
     
+    Partitioner partitioner(instgrid, 300);
+
+    auto partitions = partitioner.getPartitions();
+    for(auto partition : partitions) {
+        std::cout << partition.totalBitsize << " " << partition.getTotalRoutingDistance() << std::endl;
+    }
+    /*
     auto width = 800;
     auto height = 600;
     QApplication app(argc, argv);
-    DotWidget* widget = new DotWidget(instgrid.getCellInstances(0, 0));
+    DotWidget* widget = new DotWidget(partitions[0].instances);
     widget->resize(width, height);
     widget->setWindowTitle("Instance Grid Dots");
     widget->show();
     return app.exec();
+    */
 }
