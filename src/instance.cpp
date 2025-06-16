@@ -1,7 +1,7 @@
 #include "instance.hpp"
 
-Instance::Instance(const std::string& name, float x, float y)
-    : name(name), x(x), y(y) {}
+Instance::Instance(const std::string& name, float x, float y, unsigned int bitsize)
+    : name(name), x(x), y(y), bitsize(bitsize) {}
 
 const std::string& Instance::getName() const {
     return name;
@@ -13,6 +13,10 @@ float Instance::getX() const {
 
 float Instance::getY() const {
     return y;
+}
+
+unsigned int Instance::getBitsize() const {
+    return bitsize;
 }
 
 float Instance::distanceTo(const Instance& other) const {
