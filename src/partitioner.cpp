@@ -3,33 +3,53 @@
 #include <algorithm>
 
 
-DotWidget::DotWidget(const std::unordered_set<Instance>& instances, QWidget* parent)
-    : QWidget(parent), instances(instances) {}
+// Modified DotWidget to take a vector of sets and draw each set in a different color
+DotWidget::DotWidget(const std::vector<Partitioner::Partition>& partitions, QWidget* parent)
+    : QWidget(parent), partitions(partitions) {}
 
 void DotWidget::paintEvent(QPaintEvent*) {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(Qt::black);
-    painter.setBrush(Qt::black);
+
+    // Color palette for up to 10 partitions, will repeat if more
+    static const QColor colors[] = {
+        Qt::red, Qt::blue, Qt::green, Qt::magenta, Qt::darkYellow,
+        Qt::cyan, Qt::darkRed, Qt::darkGreen, Qt::darkBlue, Qt::black
+    };
+    constexpr int colorCount = sizeof(colors) / sizeof(colors[0]);
 
     // Find min/max for scaling
-    float minX = instances.empty() ? 0 : (*instances.begin()).getX();
-    float maxX = minX;
-    float minY = instances.empty() ? 0 : (*instances.begin()).getY();
-    float maxY = minY;
-    for (const auto& inst : instances) {
-        if (inst.getX() < minX) minX = inst.getX();
-        if (inst.getX() > maxX) maxX = inst.getX();
-        if (inst.getY() < minY) minY = inst.getY();
-        if (inst.getY() > maxY) maxY = inst.getY();
+    float minX = 0, maxX = 0, minY = 0, maxY = 0;
+    bool first = true;
+    for (const auto& set : partitions) {
+        for (const auto& inst : set.instances) {
+            if (first) {
+                minX = maxX = inst.getX();
+                minY = maxY = inst.getY();
+                first = false;
+            } else {
+                if (inst.getX() < minX) minX = inst.getX();
+                if (inst.getX() > maxX) maxX = inst.getX();
+                if (inst.getY() < minY) minY = inst.getY();
+                if (inst.getY() > maxY) maxY = inst.getY();
+            }
+        }
     }
     float scaleX = (maxX - minX) > 0 ? (width() - 20) / (maxX - minX) : 1.0f;
     float scaleY = (maxY - minY) > 0 ? (height() - 20) / (maxY - minY) : 1.0f;
 
-    for (const auto& inst : instances) {
-        int px = 10 + static_cast<int>((inst.getX() - minX) * scaleX);
-        int py = 10 + static_cast<int>((inst.getY() - minY) * scaleY);
-        painter.drawEllipse(QPoint(px, py), 2, 2);
+    
+    // Draw each partition in a different color
+    size_t idx = 0;
+    for (const auto& set : partitions) {
+        painter.setPen(colors[idx % colorCount]);
+        painter.setBrush(colors[idx % colorCount]);
+        for (const auto& inst : set.instances) {
+            int px = 10 + static_cast<int>((inst.getX() - minX) * scaleX);
+            int py = 10 + static_cast<int>((inst.getY() - minY) * scaleY);
+            painter.drawEllipse(QPoint(px, py), 2, 2);
+        }
+        ++idx;
     }
 
     // Draw scale text at the bottom
@@ -38,7 +58,6 @@ void DotWidget::paintEvent(QPaintEvent*) {
         .arg(minX).arg(maxX).arg(minY).arg(maxY);
     painter.drawText(10, height() - 10, scaleText);
 }
-
 
 const float Partitioner::Partition::getTotalRoutingDistance() {
     if (instances.size() < 2) return 0.0f;
@@ -67,8 +86,9 @@ void Partitioner::partition() {
     partitions.clear();
 
     Partition current;
-    for (const auto& it : grid.grid) {
-        for(const auto& inst : it.second) {
+    for (auto& it : grid.grid) {
+        // TODO: Iterate by increasing X and Y
+        for(auto& inst : it.second) {
             if (current.totalBitsize + inst.getBitsize() > bitsizeLimit && !current.instances.empty()) {
                 partitions.push_back(current);
                 current = Partition();

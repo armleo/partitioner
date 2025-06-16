@@ -5,18 +5,6 @@
 #include "instance.hpp"
 #include "instanceGrid.hpp"
 
-class DotWidget : public QWidget {
-    
-public:
-    explicit DotWidget(const std::unordered_set<Instance>& instances, QWidget* parent = nullptr);
-
-protected:
-    void paintEvent(QPaintEvent* event) override;
-
-private:
-    const std::unordered_set<Instance>& instances;
-};
-
 class Partitioner {
 public:
     struct Partition {
@@ -39,3 +27,14 @@ private:
     std::vector<Partition> partitions;
 };
 
+
+class DotWidget : public QWidget {
+public:
+    explicit DotWidget(const std::vector<Partitioner::Partition>& partitions, QWidget* parent = nullptr);
+
+protected:
+    void paintEvent(QPaintEvent* event) override;
+
+private:
+    const std::vector<Partitioner::Partition>& partitions;
+};

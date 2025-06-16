@@ -29,3 +29,7 @@ bool Instance::operator==(const Instance& other) const {
 }
 
 
+bool Instance::operator<(const Instance& other) const {
+    return x < other.x;
+}
+

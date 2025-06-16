@@ -15,7 +15,7 @@ public:
     float distanceTo(const Instance& other) const;
 
     bool operator==(const Instance& other) const;
-
+    bool operator<(const Instance& other) const;
 
 private:
     std::string name;
