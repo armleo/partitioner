@@ -2,24 +2,20 @@
 #include <random>
 #include <fstream>
 #include <QtWidgets>
-#include <randomInstanceGenerator.hpp>
-#include <instanceListReader.hpp>
 #include <instance.hpp>
-
+#include <instanceGrid.hpp>
 
 
 
 int main(int argc, char** argv) {
-    RandomInstanceGenerator instgen(0.0f, 100.0f, 0.0f, 200.0f);
-    instgen.generateToFile("outfile.txt", 1000000, 8);
-    
+    InstanceGrid instgrid(1.0);
+
+    instgrid.generateRandomInstancesToFile("outfile.txt", 1000000, 0.0f, 100.0f, 0.0f, 200.0f, 8);
+
     // We read it into the vector but it might not be read from the file but be inside memory already
-    auto insts = readInstancesFromFile("outfile.txt");
+    instgrid.readInstancesFromFile("outfile.txt");
+    
     /*
-    for(auto inst : insts) {
-
-    }
-
 
     
     QApplication app(argc, argv);
