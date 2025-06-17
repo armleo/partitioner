@@ -13,7 +13,7 @@ public:
         const float getTotalRoutingDistance();
     };
 
-    Partitioner(const InstanceGrid& grid, unsigned int bitsizeLimit);
+    Partitioner(InstanceGrid& grid, unsigned int bitsizeLimit);
 
     // Performs the partitioning
     void partition();
@@ -26,7 +26,7 @@ public:
     const std::vector<Partition>& getPartitions();
 
 private:
-    const InstanceGrid& grid;
+    InstanceGrid& grid;
     unsigned int bitsizeLimit;
     std::vector<Partition> partitions;
 };
@@ -34,12 +34,12 @@ private:
 
 class DotWidget : public QWidget {
 public:
-    explicit DotWidget(const InstanceGrid & grid, const std::vector<Partitioner::Partition>& partitions, QWidget* parent = nullptr);
+    explicit DotWidget(InstanceGrid & grid, std::vector<Partitioner::Partition>& partitions, QWidget* parent = nullptr);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
 
 private:
-    const std::vector<Partitioner::Partition>& partitions;
-    const InstanceGrid& grid;
+    std::vector<Partitioner::Partition>& partitions;
+    InstanceGrid& grid;
 };

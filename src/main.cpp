@@ -10,18 +10,18 @@
 int main(int argc, char** argv) {
     InstanceGrid instgrid(1.0);
 
-    instgrid.generateRandomInstancesToFile("outfile.txt", 1000000, 0.0f, 100.0f, 0.0f, 200.0f, 8);
+    instgrid.generateRandomInstancesToFile("outfile.txt", 10000, BoundingBox(Point2D(0.0f, 0.0f), Point2D(100.0f, 200.0f)), 8);
     instgrid.readInstancesFromFile("outfile.txt");
     
 
-    Partitioner partitioner(instgrid, 100);
+    Partitioner partitioner(instgrid, 500);
     //partitioner.partitionNearby();
     partitioner.partition();
     auto partitions = partitioner.getPartitions();
     std::cout << "TOTAL DEFAULT: " << partitioner.getPartitionsTotalRoutingLength() << std::endl;
 
     partitioner.partitionLocalized();
-    auto partitions = partitioner.getPartitions();
+    partitions = partitioner.getPartitions();
     std::cout << "TOTAL LOCALIZED: " << partitioner.getPartitionsTotalRoutingLength() << std::endl;
 
 

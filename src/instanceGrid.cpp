@@ -1,58 +1,63 @@
-#include <unordered_map>
-#include <vector>
-#include <algorithm>
-#include <QApplication>
-#include <QWidget>
-#include <QPainter>
-#include <utility>
+#include "instanceGrid.hpp"
 #include <fstream>
+#include <sstream>
 #include <random>
 #include <chrono>
-#include <sstream>
+#include <cmath>
+#include <algorithm>
 
-#include "instance.hpp"
-#include "instanceGrid.hpp"
+// Constructor
+InstanceGrid::InstanceGrid(float binSize)
+    : binSize(binSize), bounds() {}
 
-
-// Bins instances by integer cell coordinates (binSize x binSize)
-InstanceGrid::InstanceGrid(float binSize) : binSize(binSize) {};
-
+// Add an instance and update bounds
 void InstanceGrid::addInstance(const Instance& inst) {
     if (grid.empty()) {
-        minX = maxX = inst.getX();
-        minY = maxY = inst.getY();
+        bounds.ll.x = bounds.ur.x = inst.getX();
+        bounds.ll.y = bounds.ur.y = inst.getY();
     } else {
-        if (inst.getX() < minX) minX = inst.getX();
-        if (inst.getX() > maxX) maxX = inst.getX();
-        if (inst.getY() < minY) minY = inst.getY();
-        if (inst.getY() > maxY) maxY = inst.getY();
+        if (inst.getX() < bounds.ll.x) bounds.ll.x = inst.getX();
+        if (inst.getX() > bounds.ur.x) bounds.ur.x = inst.getX();
+        if (inst.getY() < bounds.ll.y) bounds.ll.y = inst.getY();
+        if (inst.getY() > bounds.ur.y) bounds.ur.y = inst.getY();
     }
-
-    auto cell = getCell(inst.getX(), inst.getY());
+    auto cell = getCell(Point2D(inst.getX(), inst.getY()));
     grid[cell].push_back(inst);
-};
+}
 
-// Returns all instances in the cell containing (x, y)
+// Get all instances in the cell containing (x, y)
 const std::vector<Instance>& InstanceGrid::getCellInstances(float x, float y) const {
     static const std::vector<Instance> empty;
-    auto it = grid.find(getCell(x, y));
+    auto it = grid.find(getCell(Point2D(x, y)));
     if (it != grid.end()) return it->second;
     return empty;
-};
+}
 
-/*
-// Returns all cells in the bounding box
-const std::vector<Instance>& InstanceGrid::getCellInstancesWithin(float minX, float minY, float maxX, float maxY) const {
-    static const std::vector<Instance> empty;
-    auto it = grid.find(getCell(x, y));
-    if (it != grid.end()) return it->second;
-    return empty;
-};
+// Get all instances within the bounding box
+std::vector<Instance> InstanceGrid::getCellInstancesWithin(const BoundingBox& bbox) const {
+    std::vector<Instance> result;
+    int cellMinX = static_cast<int>(std::floor(bbox.ll.x / binSize));
+    int cellMaxX = static_cast<int>(std::floor(bbox.ur.x / binSize));
+    int cellMinY = static_cast<int>(std::floor(bbox.ll.y / binSize));
+    int cellMaxY = static_cast<int>(std::floor(bbox.ur.y / binSize));
 
-*/
+    for (int cx = cellMinX; cx <= cellMaxX; ++cx) {
+        for (int cy = cellMinY; cy <= cellMaxY; ++cy) {
+            auto it = grid.find({cx, cy});
+            if (it != grid.end()) {
+                for (const auto& inst : it->second) {
+                    if (inst.getX() >= bbox.ll.x && inst.getX() <= bbox.ur.x &&
+                        inst.getY() >= bbox.ll.y && inst.getY() <= bbox.ur.y) {
+                        result.push_back(inst);
+                    }
+                }
+            }
+        }
+    }
+    return result;
+}
 
-
-// Reads instances from a file and returns a vector of Instance objects
+// Reads instances from a file and adds them to the grid
 void InstanceGrid::readInstancesFromFile(const std::string& filename) {
     std::ifstream infile(filename);
     std::string line;
@@ -66,17 +71,17 @@ void InstanceGrid::readInstancesFromFile(const std::string& filename) {
             addInstance(inst);
         }
     }
-};
+}
 
-// Generates a file with random instances: "instancename x y"
+// Generates a file with random instances within a bounding box
 void InstanceGrid::generateRandomInstancesToFile(const std::string& filename, size_t count,
-                                    float minX, float maxX, float minY, float maxY, size_t nameLength) {
+                                                 const BoundingBox& searchBox, size_t nameLength) {
     std::ofstream out(filename);
     if (!out) return;
 
     std::mt19937 rng(std::chrono::steady_clock::now().time_since_epoch().count());
-    std::uniform_real_distribution<float> distX(minX, maxX);
-    std::uniform_real_distribution<float> distY(minY, maxY);
+    std::uniform_real_distribution<float> distX(searchBox.ll.x, searchBox.ur.x);
+    std::uniform_real_distribution<float> distY(searchBox.ll.y, searchBox.ur.y);
     std::uniform_int_distribution<int> distBitsize(0, 8);
     std::string charset = "abcdefghijklmnopqrstuvwxyz";
     std::uniform_int_distribution<size_t> distChar(0, charset.length() - 1);
@@ -95,11 +100,22 @@ void InstanceGrid::generateRandomInstancesToFile(const std::string& filename, si
     out.close();
 }
 
-std::pair<int, int> InstanceGrid::getCell(float x, float y) const {
-    int cellX = static_cast<int>(std::floor(x / binSize));
-    int cellY = static_cast<int>(std::floor(y / binSize));
+// Returns the cell coordinates for a given Point2D
+std::pair<int, int> InstanceGrid::getCell(const Point2D& p) const {
+    int cellX = static_cast<int>(std::floor(p.x / binSize));
+    int cellY = static_cast<int>(std::floor(p.y / binSize));
     return {cellX, cellY};
 }
 
+// Accessors for grid, bounds, and binSize
+std::unordered_map<std::pair<int, int>, std::vector<Instance>, PairHash>& InstanceGrid::getGrid() {
+    return grid;
+}
 
+BoundingBox& InstanceGrid::getBounds() {
+    return bounds;
+}
 
+float InstanceGrid::getBinSize() {
+    return binSize;
+}

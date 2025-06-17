@@ -1,14 +1,16 @@
 #pragma once
 #include <string>
-#include <complex>
+#include "geom.hpp"
 
 class Instance {
 public:
     Instance(const std::string& name, float x, float y, unsigned int bitsize);
+    Instance(const std::string& name, const Point2D& location, unsigned int bitsize);
 
     const std::string& getName() const;
     float getX() const;
     float getY() const;
+    const Point2D& getLocation() const;
     unsigned int getBitsize() const;
 
     // Calculates Manhattan distance to another instance
@@ -19,8 +21,7 @@ public:
 
 private:
     std::string name;
-    float x;
-    float y;
+    Point2D location;
     unsigned int bitsize;
 };
 

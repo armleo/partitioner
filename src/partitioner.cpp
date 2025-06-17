@@ -4,7 +4,7 @@
 
 
 // Modified DotWidget to take a vector of sets and draw each set in a different color
-DotWidget::DotWidget(const InstanceGrid & grid, const std::vector<Partitioner::Partition>& partitions, QWidget* parent)
+DotWidget::DotWidget(InstanceGrid & grid, std::vector<Partitioner::Partition>& partitions, QWidget* parent)
     : QWidget(parent), partitions(partitions), grid(grid) {}
 
 void DotWidget::paintEvent(QPaintEvent*) {
@@ -20,10 +20,10 @@ void DotWidget::paintEvent(QPaintEvent*) {
 
     
     // Find min/max for scaling
-    float minX = grid.minX;
-    float maxX = grid.maxX;
-    float minY = grid.minY;
-    float maxY = grid.maxY;
+    float minX = grid.getBounds().ll.x;
+    float maxX = grid.getBounds().ur.x;
+    float minY = grid.getBounds().ll.y;
+    float maxY = grid.getBounds().ur.y;
 
     float dataWidth = maxX - minX;
     float dataHeight = maxY - minY;
@@ -83,20 +83,34 @@ const float Partitioner::Partition::getTotalRoutingDistance() {
     return total;
 }
 
-Partitioner::Partitioner(const InstanceGrid& grid, unsigned int bitsizeLimit)
+Partitioner::Partitioner(InstanceGrid& grid, unsigned int bitsizeLimit)
     : grid(grid), bitsizeLimit(bitsizeLimit) {}
 
 
 
 void Partitioner::partitionLocalized() {
     partitions.clear();
-    
+    /*
     Partition current;
     float minX = grid.minX;
     float minY = grid.minY;
 
+    float previousMaxX = minX;
+    float previousMaxY = minY;
+    
     float maxX = minX + grid.binSize;
     float maxY = minX + grid.binSize;
+
+    auto insts = grid.getCellInstancesWithin(minX, minY, maxX, maxY);
+
+    for(auto& inst : insts) {
+        if (current.totalBitsize + inst.getBitsize() > bitsizeLimit && !current.instances.empty()) {
+            partitions.push_back(current);
+            current = Partition();
+        }
+        current.instances.emplace(inst);
+        current.totalBitsize += inst.getBitsize();
+    }
     
     
     for (auto& it : grid.grid) {
@@ -114,6 +128,7 @@ void Partitioner::partitionLocalized() {
     if (!current.instances.empty()) {
         partitions.push_back(current);
     }
+        */
 }
 
 void Partitioner::partitionNearby() {
@@ -121,7 +136,7 @@ void Partitioner::partitionNearby() {
 
     // Collect all instances and mark them as unassigned
     std::unordered_set<const Instance*> unassigned;
-    for (const auto& cell : grid.grid) {
+    for (const auto& cell : grid.getGrid()) {
         for (const auto& inst : cell.second) {
             unassigned.insert(&inst);
         }
@@ -177,8 +192,7 @@ void Partitioner::partition() {
     partitions.clear();
 
     Partition current;
-    for (auto& it : grid.grid) {
-        // TODO: Iterate by increasing X and Y
+    for (auto& it : grid.getGrid()) {
         for(auto& inst : it.second) {
             if (current.totalBitsize + inst.getBitsize() > bitsizeLimit && !current.instances.empty()) {
                 partitions.push_back(current);

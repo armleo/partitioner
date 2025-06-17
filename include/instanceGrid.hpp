@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include "instance.hpp"
+#include "geom.hpp"
 
 // Hash function for std::pair<int, int>
 struct PairHash {
@@ -18,17 +19,20 @@ public:
     void addInstance(const Instance& inst);
 
     const std::vector<Instance>& getCellInstances(float x, float y) const;
+    std::vector<Instance> getCellInstancesWithin(const BoundingBox& bbox) const;
 
     void readInstancesFromFile(const std::string& filename);
     void generateRandomInstancesToFile(const std::string& filename, size_t count,
-                                       float minX, float maxX, float minY, float maxY, size_t nameLength);
-    
-    // TODO: Add getter and setters if needed
-    std::unordered_map<std::pair<int, int>, std::vector<Instance>, PairHash> grid;
-    // Find min/max for scaling
-    float minX, maxX, minY, maxY;
-    float binSize;
+                                       const BoundingBox& searchBox, size_t nameLength);
 
+    
+    std::pair<int, int> getCell(const Point2D& p) const;
+    
+    std::unordered_map<std::pair<int, int>, std::vector<Instance>, PairHash>& getGrid();
+    BoundingBox& getBounds();
+    float getBinSize();
 private:
-    std::pair<int, int> getCell(float x, float y) const;
+    std::unordered_map<std::pair<int, int>, std::vector<Instance>, PairHash> grid;
+    BoundingBox bounds;
+    float binSize;
 };
