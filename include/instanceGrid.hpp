@@ -24,8 +24,11 @@ public:
                                        float minX, float maxX, float minY, float maxY, size_t nameLength);
         
     std::unordered_map<std::pair<int, int>, std::vector<Instance>, PairHash> grid;
+    float minX, maxX, minY, maxY;
+    
 private:
     float binSize;
+    // Find min/max for scaling
     
 
     std::pair<int, int> getCell(float x, float y) const;

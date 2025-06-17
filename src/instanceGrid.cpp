@@ -18,6 +18,16 @@
 InstanceGrid::InstanceGrid(float binSize) : binSize(binSize) {};
 
 void InstanceGrid::addInstance(const Instance& inst) {
+    if (grid.empty()) {
+        minX = maxX = inst.getX();
+        minY = maxY = inst.getY();
+    } else {
+        if (inst.getX() < minX) minX = inst.getX();
+        if (inst.getX() > maxX) maxX = inst.getX();
+        if (inst.getY() < minY) minY = inst.getY();
+        if (inst.getY() > maxY) maxY = inst.getY();
+    }
+
     auto cell = getCell(inst.getX(), inst.getY());
     grid[cell].push_back(inst);
 };

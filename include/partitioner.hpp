@@ -17,6 +17,10 @@ public:
 
     // Performs the partitioning
     void partition();
+    void partitionLocalized();
+    void partitionNearby();
+
+    float getPartitionsTotalRoutingLength();
 
     // Returns the created partitions
     const std::vector<Partition>& getPartitions();
@@ -30,11 +34,12 @@ private:
 
 class DotWidget : public QWidget {
 public:
-    explicit DotWidget(const std::vector<Partitioner::Partition>& partitions, QWidget* parent = nullptr);
+    explicit DotWidget(const InstanceGrid & grid, const std::vector<Partitioner::Partition>& partitions, QWidget* parent = nullptr);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
 
 private:
     const std::vector<Partitioner::Partition>& partitions;
+    const InstanceGrid& grid;
 };
