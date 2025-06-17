@@ -40,6 +40,17 @@ const std::vector<Instance>& InstanceGrid::getCellInstances(float x, float y) co
     return empty;
 };
 
+/*
+// Returns all cells in the bounding box
+const std::vector<Instance>& InstanceGrid::getCellInstancesWithin(float minX, float minY, float maxX, float maxY) const {
+    static const std::vector<Instance> empty;
+    auto it = grid.find(getCell(x, y));
+    if (it != grid.end()) return it->second;
+    return empty;
+};
+
+*/
+
 
 // Reads instances from a file and returns a vector of Instance objects
 void InstanceGrid::readInstancesFromFile(const std::string& filename) {

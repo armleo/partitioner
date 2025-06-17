@@ -92,8 +92,12 @@ void Partitioner::partitionLocalized() {
     partitions.clear();
     
     Partition current;
-    float x = grid.minX;
-    float y = grid.minY;
+    float minX = grid.minX;
+    float minY = grid.minY;
+
+    float maxX = minX + grid.binSize;
+    float maxY = minX + grid.binSize;
+    
     
     for (auto& it : grid.grid) {
         // TODO: Iterate by increasing X and Y

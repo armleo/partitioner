@@ -20,6 +20,10 @@ int main(int argc, char** argv) {
     auto partitions = partitioner.getPartitions();
     std::cout << "TOTAL DEFAULT: " << partitioner.getPartitionsTotalRoutingLength() << std::endl;
 
+    partitioner.partitionLocalized();
+    auto partitions = partitioner.getPartitions();
+    std::cout << "TOTAL LOCALIZED: " << partitioner.getPartitionsTotalRoutingLength() << std::endl;
+
 
     partitioner.partitionNearby();
     partitions = partitioner.getPartitions();
