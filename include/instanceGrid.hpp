@@ -36,10 +36,13 @@ public:
     float getBinSize();
     unsigned int getMaxBitSize();
     size_t getInstanceCount();
+    size_t getTotalBitSize();
+    
 private:
     std::unordered_map<std::pair<int, int>, std::vector<Instance>, PairHash> grid;
     BoundingBox bounds;
     float binSize;
     unsigned int maxBitSize = 0;
     size_t instanceCount = 0;
+    size_t totalBitSize = 0;
 };

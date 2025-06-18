@@ -7,10 +7,15 @@
 
 class Partitioner {
 public:
-    struct Partition {
-        std::unordered_set<Instance> instances;
-        unsigned int totalBitsize = 0;
-        const float getTotalRoutingDistance();
+    class Partition {
+        public:
+            void addInstance(Instance inst);
+            void removeInstance(Instance inst);
+            const float getTotalRoutingDistance();
+
+            std::unordered_set<Instance> instances;
+            unsigned int totalBitsize = 0;
+            Point2D centerLoc = Point2D(0, 0);
     };
 
     Partitioner(InstanceGrid& grid, unsigned int bitsizeLimit);
@@ -19,8 +24,11 @@ public:
     void partition();
     void partitionLocalized();
     void partitionNearby();
+    void partitionMerging();
 
     float getPartitionsTotalRoutingLength();
+    size_t getPartitionAverageBitSize();
+    size_t getViolatingBitLimitPartitionCount();
 
     // Returns the created partitions
     const std::vector<Partition>& getPartitions();
@@ -29,6 +37,7 @@ private:
     InstanceGrid& grid;
     unsigned int bitsizeLimit;
     std::vector<Partition> partitions;
+    
 };
 
 

@@ -16,12 +16,14 @@ void InstanceGrid::addInstance(const Instance& inst) {
         bounds.ll.x = bounds.ur.x = inst.getX();
         bounds.ll.y = bounds.ur.y = inst.getY();
         maxBitSize = inst.getBitsize();
+        totalBitSize = inst.getBitsize();
     } else {
         if (inst.getX() < bounds.ll.x) bounds.ll.x = inst.getX();
         if (inst.getX() > bounds.ur.x) bounds.ur.x = inst.getX();
         if (inst.getY() < bounds.ll.y) bounds.ll.y = inst.getY();
         if (inst.getY() > bounds.ur.y) bounds.ur.y = inst.getY();
         if (inst.getBitsize() > maxBitSize) maxBitSize = inst.getBitsize();
+        totalBitSize += inst.getBitsize();
     }
     auto cell = getCell(Point2D(inst.getX(), inst.getY()));
     grid[cell].push_back(inst);
@@ -176,4 +178,8 @@ unsigned int InstanceGrid::getMaxBitSize() {
 
 size_t InstanceGrid::getInstanceCount() {
     return instanceCount;
+}
+
+size_t InstanceGrid::getTotalBitSize() {
+    return totalBitSize;
 }
