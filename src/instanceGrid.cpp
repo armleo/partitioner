@@ -8,21 +8,24 @@
 
 // Constructor
 InstanceGrid::InstanceGrid(float binSize)
-    : binSize(binSize), bounds() {}
+    : binSize(binSize), bounds(BoundingBox(Point2D(0, 0), Point2D(0, 0))) {}
 
 // Add an instance and update bounds
 void InstanceGrid::addInstance(const Instance& inst) {
     if (grid.empty()) {
         bounds.ll.x = bounds.ur.x = inst.getX();
         bounds.ll.y = bounds.ur.y = inst.getY();
+        maxBitSize = inst.getBitsize();
     } else {
         if (inst.getX() < bounds.ll.x) bounds.ll.x = inst.getX();
         if (inst.getX() > bounds.ur.x) bounds.ur.x = inst.getX();
         if (inst.getY() < bounds.ll.y) bounds.ll.y = inst.getY();
         if (inst.getY() > bounds.ur.y) bounds.ur.y = inst.getY();
+        if (inst.getBitsize() > maxBitSize) maxBitSize = inst.getBitsize();
     }
     auto cell = getCell(Point2D(inst.getX(), inst.getY()));
     grid[cell].push_back(inst);
+    instanceCount += 1;
 }
 
 // Get all instances in the cell containing (x, y)
@@ -100,6 +103,53 @@ void InstanceGrid::generateRandomInstancesToFile(const std::string& filename, si
     out.close();
 }
 
+
+// Generates a file with instances distributed in Gaussian clusters
+void InstanceGrid::generateGaussianClustersToFile(const std::string& filename, size_t instanceCount,
+                                                 size_t clusterCount, const BoundingBox& area,
+                                                 float stddev, size_t nameLength) {
+    std::ofstream out(filename);
+    if (!out) return;
+
+    std::mt19937 rng(std::chrono::steady_clock::now().time_since_epoch().count());
+    std::uniform_real_distribution<float> distX(area.ll.x, area.ur.x);
+    std::uniform_real_distribution<float> distY(area.ll.y, area.ur.y);
+    std::uniform_int_distribution<int> distBitsize(0, 8);
+    std::string charset = "abcdefghijklmnopqrstuvwxyz";
+    std::uniform_int_distribution<size_t> distChar(0, charset.length() - 1);
+
+    // Generate cluster centers
+    std::vector<Point2D> centers;
+    for (size_t i = 0; i < clusterCount; ++i) {
+        centers.emplace_back(distX(rng), distY(rng));
+    }
+
+    // For each instance, pick a cluster and sample from Gaussian around it
+    std::uniform_int_distribution<size_t> distCluster(0, clusterCount - 1);
+    std::normal_distribution<float> gauss(0.0f, stddev);
+
+    for (size_t i = 0; i < instanceCount; ++i) {
+        std::string name;
+        name.reserve(nameLength);
+        for (size_t j = 0; j < nameLength; ++j) {
+            name += charset[distChar(rng)];
+        }
+
+        int bitsize = distBitsize(rng);
+
+        size_t clusterIdx = distCluster(rng);
+        float x = centers[clusterIdx].x + gauss(rng);
+        float y = centers[clusterIdx].y + gauss(rng);
+
+        auto withinXbounds = (x < area.ur.x) && (x > area.ll.x);
+        auto withinYbounds = (y < area.ur.y) && (y > area.ll.y);
+        if (withinYbounds && withinXbounds) {
+            out << name << " " << x << " " << y << " " << bitsize << "\n";
+        }
+    }
+    out.close();
+}
+
 // Returns the cell coordinates for a given Point2D
 std::pair<int, int> InstanceGrid::getCell(const Point2D& p) const {
     int cellX = static_cast<int>(std::floor(p.x / binSize));
@@ -118,4 +168,12 @@ BoundingBox& InstanceGrid::getBounds() {
 
 float InstanceGrid::getBinSize() {
     return binSize;
+}
+
+unsigned int InstanceGrid::getMaxBitSize() {
+    return maxBitSize;
+}
+
+size_t InstanceGrid::getInstanceCount() {
+    return instanceCount;
 }

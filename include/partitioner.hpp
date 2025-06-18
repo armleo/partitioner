@@ -34,12 +34,12 @@ private:
 
 class DotWidget : public QWidget {
 public:
-    explicit DotWidget(InstanceGrid & grid, std::vector<Partitioner::Partition>& partitions, QWidget* parent = nullptr);
+    explicit DotWidget(InstanceGrid & grid, std::vector<Partitioner::Partition> partitions, QWidget* parent = nullptr);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
 
 private:
-    std::vector<Partitioner::Partition>& partitions;
+    std::vector<Partitioner::Partition> partitions;
     InstanceGrid& grid;
 };

@@ -8,40 +8,58 @@
 
 
 int main(int argc, char** argv) {
-    InstanceGrid instgrid(1.0);
+    using std::chrono::high_resolution_clock;
+    using std::chrono::duration_cast;
+    using std::chrono::duration;
+    using std::chrono::milliseconds;
 
-    instgrid.generateRandomInstancesToFile("outfile.txt", 10000, BoundingBox(Point2D(0.0f, 0.0f), Point2D(100.0f, 200.0f)), 8);
+
+
+    InstanceGrid instgrid(10.0);
+
+    //instgrid.generateRandomInstancesToFile("outfile.txt", 1000000, BoundingBox(Point2D(0.0f, 0.0f), Point2D(100.0f, 200.0f)), 8);
+    instgrid.generateGaussianClustersToFile("outfile.txt", 10000, 4, BoundingBox(Point2D(0.0f, 0.0f), Point2D(100.0f, 200.0f)),
+                                                 50.0f, 8);
     instgrid.readInstancesFromFile("outfile.txt");
-    
-
-    Partitioner partitioner(instgrid, 500);
-    //partitioner.partitionNearby();
-    partitioner.partition();
-    auto partitions = partitioner.getPartitions();
-    std::cout << "TOTAL DEFAULT: " << partitioner.getPartitionsTotalRoutingLength() << std::endl;
-
-    partitioner.partitionLocalized();
-    partitions = partitioner.getPartitions();
-    std::cout << "TOTAL LOCALIZED: " << partitioner.getPartitionsTotalRoutingLength() << std::endl;
-
-
-    partitioner.partitionNearby();
-    partitions = partitioner.getPartitions();
-    std::cout << "TOTAL NEARBY: " << partitioner.getPartitionsTotalRoutingLength() << std::endl;
-    /*
-    for(auto partition : partitions) {
-        std::cout << partition.totalBitsize << std::endl;
-    }
-    */
-    
     
     auto width = 800;
     auto height = 600;
     QApplication app(argc, argv);
-    DotWidget* widget = new DotWidget(instgrid, partitions);
-    widget->resize(width, height);
-    widget->setWindowTitle("Instance Grid Dots");
-    widget->show();
+    
+    std::vector<Partitioner*> partitionersList;
+
+    for(int i = 0; i < 2; i++) {
+        
+        auto partitioner = new Partitioner(instgrid, 100);
+        partitionersList.push_back(partitioner);
+
+        //partitioner.partitionNearby();
+
+        auto t1 = high_resolution_clock::now();
+        if (i == 0) partitioner->partition();
+        if (i == 1) partitioner->partitionLocalized();
+        if (i == 2) partitioner->partitionNearby();
+        auto t2 = high_resolution_clock::now();
+        duration<double, std::milli> ms_double = t2 - t1;
+
+        auto partitions = partitioner->getPartitions();
+        std::cout << "TOTAL " << i << " " << partitioner->getPartitionsTotalRoutingLength() << "   RUNTIME: " << ms_double.count() << "ms" << std::endl;
+        
+    }
+
+    
+    int i = 0;
+    for(auto partitioner : partitionersList) {
+        auto partitions = partitioner->getPartitions();
+        DotWidget* widget = new DotWidget(instgrid, partitions);
+        widget->resize(width, height);
+        QString header = QString("Dots %1").arg(i);
+        widget->setWindowTitle(header);
+        widget->show();
+        ++i;
+    }
+    // TODO: Delete partionersList instances and DotWidget
     return app.exec();
+    
     
 }

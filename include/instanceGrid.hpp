@@ -24,6 +24,9 @@ public:
     void readInstancesFromFile(const std::string& filename);
     void generateRandomInstancesToFile(const std::string& filename, size_t count,
                                        const BoundingBox& searchBox, size_t nameLength);
+    void generateGaussianClustersToFile(const std::string& filename, size_t instanceCount,
+                                size_t clusterCount, const BoundingBox& area,
+                                float stddev, size_t nameLength);
 
     
     std::pair<int, int> getCell(const Point2D& p) const;
@@ -31,8 +34,12 @@ public:
     std::unordered_map<std::pair<int, int>, std::vector<Instance>, PairHash>& getGrid();
     BoundingBox& getBounds();
     float getBinSize();
+    unsigned int getMaxBitSize();
+    size_t getInstanceCount();
 private:
     std::unordered_map<std::pair<int, int>, std::vector<Instance>, PairHash> grid;
     BoundingBox bounds;
     float binSize;
+    unsigned int maxBitSize = 0;
+    size_t instanceCount = 0;
 };

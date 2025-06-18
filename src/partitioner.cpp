@@ -4,8 +4,8 @@
 
 
 // Modified DotWidget to take a vector of sets and draw each set in a different color
-DotWidget::DotWidget(InstanceGrid & grid, std::vector<Partitioner::Partition>& partitions, QWidget* parent)
-    : QWidget(parent), partitions(partitions), grid(grid) {}
+DotWidget::DotWidget(InstanceGrid & grid, std::vector<Partitioner::Partition> partitions, QWidget* parent)
+    : QWidget(parent), partitions(std::move(partitions)), grid(grid) {}
 
 void DotWidget::paintEvent(QPaintEvent*) {
     QPainter painter(this);
@@ -87,50 +87,86 @@ Partitioner::Partitioner(InstanceGrid& grid, unsigned int bitsizeLimit)
     : grid(grid), bitsizeLimit(bitsizeLimit) {}
 
 
-
 void Partitioner::partitionLocalized() {
     partitions.clear();
-    /*
-    Partition current;
-    float minX = grid.minX;
-    float minY = grid.minY;
+    std::unordered_set<const Instance*> visited;
 
-    float previousMaxX = minX;
-    float previousMaxY = minY;
-    
-    float maxX = minX + grid.binSize;
-    float maxY = minX + grid.binSize;
+    float binSize = grid.getBinSize();
+    float minX = grid.getBounds().ll.x;
+    float minY = grid.getBounds().ll.y;
+    float maxX = grid.getBounds().ur.x;
+    float maxY = grid.getBounds().ur.y;
+    float gridWidth = maxX - minX;
+    float gridHeight = maxY - minY;
+    float ratio = gridWidth / gridHeight;
+    unsigned int maxBitSize = grid.getMaxBitSize();
 
-    auto insts = grid.getCellInstancesWithin(minX, minY, maxX, maxY);
+    float startY = minY;
 
-    for(auto& inst : insts) {
-        if (current.totalBitsize + inst.getBitsize() > bitsizeLimit && !current.instances.empty()) {
-            partitions.push_back(current);
-            current = Partition();
-        }
-        current.instances.emplace(inst);
-        current.totalBitsize += inst.getBitsize();
-    }
-    
-    
-    for (auto& it : grid.grid) {
-        // TODO: Iterate by increasing X and Y
-        for(auto& inst : it.second) {
-            if (current.totalBitsize + inst.getBitsize() > bitsizeLimit && !current.instances.empty()) {
-                partitions.push_back(current);
-                current = Partition();
+    while (startY < maxY) {
+        float startX = minX;
+        while (startX < maxX) {
+            float boxX = startX;
+            float boxY = startY;
+            float boxW = binSize;
+            float boxH = binSize;
+
+            Partition current;
+            std::unordered_set<const Instance*> localVisited;
+
+            while (visited.size() + localVisited.size() < grid.getInstanceCount()) {
+                BoundingBox bbox(Point2D(boxX, boxY), Point2D(boxX + boxW, boxY + boxH));
+                auto instances = grid.getCellInstancesWithin(bbox);
+
+                // Only add unvisited instances
+                unsigned int bitsum = 0;
+                std::vector<const Instance*> toAdd;
+                for (const auto& inst : instances) {
+                    if (visited.count(&inst) == 0 && localVisited.count(&inst) == 0) {
+                        bitsum += inst.getBitsize();
+                        toAdd.push_back(&inst);
+                    }
+                }
+
+                if (bitsum + current.totalBitsize > bitsizeLimit) break;
+
+                for (const Instance* inst : toAdd) {
+                    current.instances.insert(*inst);
+                    current.totalBitsize += inst->getBitsize();
+                    localVisited.insert(inst);
+                }
+
+                // Decide which direction to grow
+                if (bitsum < bitsizeLimit - maxBitSize) {
+                    float boxRatio = boxW / boxH;
+                    if (boxRatio > ratio) {
+                        boxH += binSize;
+                        if (boxY + boxH > maxY) boxH = maxY - boxY;
+                    } else {
+                        boxW += binSize;
+                        if (boxX + boxW > maxX) boxW = maxX - boxX;
+                    }
+                } else {
+                    break;
+                }
             }
-            current.instances.emplace(inst);
-            current.totalBitsize += inst.getBitsize();
+
+            // Mark all added as visited
+            for (const auto& inst : current.instances) {
+                visited.insert(&inst);
+            }
+
+            if (!current.instances.empty()) {
+                partitions.push_back(std::move(current));
+            }
+
+            // Move to next region in X
+            startX += binSize;
         }
+        // Move to next region in Y
+        startY += binSize;
     }
-
-    if (!current.instances.empty()) {
-        partitions.push_back(current);
-    }
-        */
 }
-
 void Partitioner::partitionNearby() {
     partitions.clear();
 
