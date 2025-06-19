@@ -14,7 +14,7 @@ Here are results of the benchmarks for 86k cells with 1 up to 8 bits (uniformly 
 | Algorithm             | Runtime | Routing (Total Net Length Increase) |
 | --------------------  | ------- | ----------------------------------- |
 | **Nearby**            | 35 s    | 20k                                 |
-| **Vendor**            | 0.02 s  | 39k                                 |
+| **Hashmap**           | 0.02 s  | 39k                                 |
 | **Merge**             | 5.2 s   | 20.5k                               |
 | **Optimized**         | 0.1 s   | 19k                                 |
 
@@ -25,7 +25,7 @@ Here are results of the benchmarks for 994k cells with 1 up to 8 bits (uniformly
 | Algorithm             | Runtime | Routing (Total Net Length Increase) |
 | --------------------  | ------- | ----------------------------------- |
 | **Nearby**            | DNF     | DNF                                 |
-| **Vendor**            | 0.235s  | 405k                                |
+| **Hashmap**           | 0.235s  | 405k                                |
 | **Merge**             | 58s     | 73k                                 |
 | **Optimized**         | 1.079s  | 72k                                 |
 
@@ -33,7 +33,7 @@ Here are results of the benchmarks for 994k cells with 1 up to 8 bits (uniformly
 
 
 
-## 1️⃣ Vendor (Nearest)
+## 1️⃣ Vendor (Nearby)
 
 Each cell is merged into its nearest unmerged cell.
 
@@ -76,3 +76,25 @@ Tradeoff: Smaller grids yield better routing quality but increase runtime; large
 Complexity: O(N) in ideal cases (when bins are naturally balanced), O(N log N) in more difficult cases.
 
 Notes: If bins are well balanced, only minimal cell movement is needed (usually within one grid unit).
+
+
+| Algorithm | Grid    | Instances | Runtime (ms) | Route Len |
+|-----------|---------|-----------|--------------|-----------|
+| HASHMAP  | FINE   | 10000 | 2.28578 | 16075.2 |
+| LOCALIZE | FINE   | 10000 | 22.9446 | 6219.53 |
+| LOCALIZE | COARSE | 10000 | 6.34681 | 7073.15 |
+| MERGING  |  N/A   | 10000 | 502.158 | 6334.94 |
+| NEARBY   |  N/A   | 10000 | 370.27 | 6439.52 |
+| | | | | |
+| HASHMAP  | FINE   | 20000 | 7.39548 | 29997.1 |
+| LOCALIZE | FINE   | 20000 | 43.7549 | 12795 |
+| LOCALIZE | COARSE | 20000 | 16.9249 | 15588.2 |
+| MERGING  |  N/A   | 20000 | 1098.2 | 12858.2 |
+| NEARBY   |  N/A   | 20000 | 3485.05 | 13163 |
+| | | | | |
+| HASHMAP  | FINE   | 40000 | 16.378 | 36930.1 |
+| LOCALIZE | FINE   | 40000 | 72.5583 | 19442.8 |
+| LOCALIZE | COARSE | 40000 | 40.1824 | 26561.5 |
+| MERGING  |  N/A   | 40000 | 2900.7 | 19743.1 |
+| NEARBY   |  N/A   | 40000 | 17440.7 | 20064.8 |
+| | | | | |
