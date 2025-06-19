@@ -48,6 +48,9 @@ int main(int argc, char** argv) {
         auto partitions = partitioner->getPartitions();
         std::cout << "Algo " << i << " MISSED: " << partitioner->countGridInstancesMissedInPartitions() << " PARTITIONS: " << partitions.size() << " AVERAGE: " << partitioner->getPartitionAverageBitSize() << " UNBALANCED: " << partitioner->getViolatingBitLimitPartitionCount() << " ROUTE_LEN: " << partitioner->getPartitionsTotalRoutingLength() << "   RUNTIME: " << ms_double.count() << "ms" << std::endl;
         
+        for (auto part : partitions) {
+            std::cout << "    X: " << part.centerLoc.x << " Y: " << part.centerLoc.y << " BITSIZE: " << part.totalBitsize << std::endl;
+        }
     }
 
     
