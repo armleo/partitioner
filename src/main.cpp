@@ -18,7 +18,7 @@ int main(int argc, char** argv) {
     InstanceGrid instgrid(10.0);
 
     //instgrid.generateRandomInstancesToFile("outfile.txt", 1000000, BoundingBox(Point2D(0.0f, 0.0f), Point2D(100.0f, 200.0f)), 8);
-    instgrid.generateGaussianClustersToFile("outfile.txt", 10000, 10, BoundingBox(Point2D(0.0f, 0.0f), Point2D(100.0f, 200.0f)),
+    instgrid.generateGaussianClustersToFile("outfile.txt", 2000, 10, BoundingBox(Point2D(0.0f, 0.0f), Point2D(100.0f, 200.0f)),
                                                  10.0f, 8);
     instgrid.readInstancesFromFile("outfile.txt");
     
@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
     
     std::vector<Partitioner*> partitionersList;
 
-    for(int i = 0; i < 2; i++) {
+    for(int i = 0; i < 4; i++) {
         
         auto partitioner = new Partitioner(instgrid, 1000);
         partitionersList.push_back(partitioner);
@@ -40,13 +40,13 @@ int main(int argc, char** argv) {
         auto t1 = high_resolution_clock::now();
         if (i == 0) partitioner->partition();
         if (i == 1) partitioner->partitionMerging();
-        if (i == 2) partitioner->partitionNearby();
-        if (i == 3) partitioner->partitionLocalized();
+        if (i == 2) partitioner->partitionLocalized();
+        if (i == 3) partitioner->partitionNearby();
         auto t2 = high_resolution_clock::now();
         duration<double, std::milli> ms_double = t2 - t1;
 
         auto partitions = partitioner->getPartitions();
-        std::cout << "Algo " << i << " PARTITIONS: " << partitions.size() << " AVERAGE: " << partitioner->getPartitionAverageBitSize() << " UNBALANCED: " << partitioner->getViolatingBitLimitPartitionCount() << " ROUTE_LEN: " << partitioner->getPartitionsTotalRoutingLength() << "   RUNTIME: " << ms_double.count() << "ms" << std::endl;
+        std::cout << "Algo " << i << " MISSED: " << partitioner->countGridInstancesMissedInPartitions() << " PARTITIONS: " << partitions.size() << " AVERAGE: " << partitioner->getPartitionAverageBitSize() << " UNBALANCED: " << partitioner->getViolatingBitLimitPartitionCount() << " ROUTE_LEN: " << partitioner->getPartitionsTotalRoutingLength() << "   RUNTIME: " << ms_double.count() << "ms" << std::endl;
         
     }
 

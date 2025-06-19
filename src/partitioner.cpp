@@ -95,7 +95,32 @@ const float Partitioner::Partition::getTotalRoutingDistance() {
     return total;
 }
 
+size_t Partitioner::countGridInstancesMissedInPartitions() const {
+    // Collect all instances from the grid
+    std::unordered_set<Instance> gridInstances;
+    for (const auto& cell : grid.getGrid()) {
+        for (const auto& inst : cell.second) {
+            gridInstances.insert(inst);
+        }
+    }
 
+    // Collect all instances from all partitions
+    std::unordered_set<Instance> partitionInstances;
+    for (const auto& partition : partitions) {
+        for (const auto& inst : partition.instances) {
+            partitionInstances.insert(inst);
+        }
+    }
+
+    // Count how many grid instances are missing from partitions
+    size_t missed = 0;
+    for (const auto& inst : gridInstances) {
+        if (partitionInstances.find(inst) == partitionInstances.end()) {
+            ++missed;
+        }
+    }
+    return missed;
+}
 Partitioner::Partitioner(InstanceGrid& grid, unsigned int bitsizeLimit)
     : grid(grid), bitsizeLimit(bitsizeLimit) {}
 
@@ -122,7 +147,7 @@ void Partitioner::partitionMerging() {
     // Calculate number of partitions (bins) to make bins as square as possible
     size_t totalBitSize = grid.getTotalBitSize();
     if (bitsizeLimit == 0) return;
-    size_t numPartitions = std::max<size_t>(1, totalBitSize / (bitsizeLimit + grid.getMaxBitSize()));
+    size_t numPartitions = std::max<size_t>(1, ceil(float(totalBitSize) / (bitsizeLimit - grid.getMaxBitSize())));
 
     // Get grid bounds
     BoundingBox bounds = grid.getBounds();
@@ -202,26 +227,35 @@ void Partitioner::partitionMerging() {
                 }
             }
             auto& under = partitions[nearestUnder];
-
-            // Find the instance in 'over' closest to 'under' center
-            const Instance* bestInst = nullptr;
-            float bestDist = std::numeric_limits<float>::max();
+            // Collect all instances in 'over' sorted by distance to 'under' center
+            std::vector<const Instance*> sortedByDist;
             for (const auto& inst : over.instances) {
-                float d = std::hypot(
-                    inst.getX() - under.centerLoc.x,
-                    inst.getY() - under.centerLoc.y
-                );
-                if (d < bestDist) {
-                    bestDist = d;
-                    bestInst = &inst;
+                sortedByDist.push_back(&inst);
+            }
+            std::sort(sortedByDist.begin(), sortedByDist.end(),
+                [&under](const Instance* a, const Instance* b) {
+                    float da = std::hypot(a->getX() - under.centerLoc.x, a->getY() - under.centerLoc.y);
+                    float db = std::hypot(b->getX() - under.centerLoc.x, b->getY() - under.centerLoc.y);
+                    return da < db;
+                }
+            );
+
+            // Try to move the closest instance that fits
+            const Instance* bestInst = nullptr;
+            for (const Instance* inst : sortedByDist) {
+                if (under.totalBitsize + inst->getBitsize() <= bitsizeLimit) {
+                    bestInst = inst;
+                    break;
                 }
             }
             // Move the instance if it fits
-            if (bestInst && under.totalBitsize + bestInst->getBitsize() <= bitsizeLimit) {
-                over.removeInstance(*bestInst);
+            if (bestInst && (under.totalBitsize + bestInst->getBitsize() <= bitsizeLimit)) {
                 under.addInstance(*bestInst);
+                over.removeInstance(*bestInst);
                 changed = true;
                 break; // Recompute overflowing/underflowing after each move
+            } else {
+                cout << "Could not move due to bit size limit" << endl;
             }
         }
     }
@@ -268,129 +302,83 @@ void Partitioner::Partition::removeInstance(Instance inst) {
     centerLoc.y = sumY / sumBits;
 }
 
-// TODO: Add remove instance implementation
-
 void Partitioner::partitionLocalized() {
-    /*
     partitions.clear();
-    std::unordered_set<const Instance*> visited;
-    
 
+    // Get grid bounds
+    BoundingBox bounds = grid.getBounds();
+    float minX = bounds.ll.x;
+    float maxX = bounds.ur.x;
+    float minY = bounds.ll.y;
+    float maxY = bounds.ur.y;
+    float width = maxX - minX;
+    float height = maxY - minY;
 
-    float binSize = grid.getBinSize();
-    float minX = grid.getBounds().ll.x;
-    float minY = grid.getBounds().ll.y;
-    float maxX = grid.getBounds().ur.x;
-    float maxY = grid.getBounds().ur.y;
-    float gridWidth = maxX - minX;
-    float gridHeight = maxY - minY;
-    float ratio = gridWidth / gridHeight;
-    unsigned int maxBitSize = grid.getMaxBitSize();
+    // Calculate number of partitions (bins) to make bins as square as possible (like merging)
+    size_t totalBitSize = grid.getTotalBitSize();
+    if (bitsizeLimit == 0) return;
+    size_t numPartitions = std::max<size_t>(1, ceil(float(totalBitSize) / (bitsizeLimit - grid.getMaxBitSize())));
 
-    float boxX = minX;
-    float boxY = minY;
-    float boxW = binSize;
-    float boxH = binSize;
-
-    Partition current;
-    std::unordered_set<const Instance*> localReminders;
-
-    while (visited.size() < grid.getInstanceCount()) {
-        BoundingBox bbox(Point2D(boxX, boxY), Point2D(boxX + boxW, boxY + boxH));
-        auto instances = grid.getCellInstancesWithin(bbox);
-
-        unsigned int bitsum = 0;
-        for (const auto& inst : instances) {
-            if (visited.count(&inst) == 0) {
-                bitsum += inst.getBitsize();
-                current.instances.emplace(&inst);
-                if (bitsum + current.totalBitsize > bitsizeLimit) {
-                    localReminders.insert(&inst);
-                    break;
-                }
-                // We reached the limit for this bin. Add the rest to the remainder;
-            }
+    // Find grid of bins (nx, ny) such that nx * ny >= numPartitions and bins are as square as possible
+    size_t bestNx = 1, bestNy = numPartitions;
+    float bestRatio = std::numeric_limits<float>::max();
+    for (size_t nx = 1; nx <= numPartitions; ++nx) {
+        size_t ny = (numPartitions + nx - 1) / nx; // ceil division
+        float binW = width / nx;
+        float binH = height / ny;
+        float ratio = std::abs(binW - binH);
+        if (ratio < bestRatio) {
+            bestRatio = ratio;
+            bestNx = nx;
+            bestNy = ny;
         }
-
-        if(localReminders.size() || (visited.size() + localReminders.size() == )) {
-
-        }
-        // If we have localReminders OR all instances are reached then push current to the results.
-        // increment on grid. If end is reached on the X axis, then push the localReminders to totalReminders
-        
     }
 
-    
-    while (startY < maxY) {
-        
-        while (startX < maxX) {
-            float boxX = startX;
-            float boxY = startY;
-            float boxW = binSize;
-            float boxH = binSize;
+    float binH = height / bestNy;
 
+    // Track visited instances to avoid duplicates
+    std::unordered_set<Instance> visited;
+
+    for (size_t iy = 0; iy < bestNy; ++iy) {
+        float bottom = minY + iy * binH;
+        float top = (iy == bestNy - 1) ? maxY : (bottom + binH);
+
+        float curX = minX;
+        while (curX < maxX) {
             Partition current;
-            std::unordered_set<const Instance*> localVisited;
+            float nextX = curX;
+            bool reachedLimit = false;
 
-            while (visited.size() + localVisited.size() < grid.getInstanceCount()) { // Iterate until all instances are visited;
-                BoundingBox bbox(Point2D(boxX, boxY), Point2D(boxX + boxW, boxY + boxH));
-                auto instances = grid.getCellInstancesWithin(bbox);
-
-                std::cout << "Found " << instances.size() << " within" << boxX << " " << boxY << " "  << boxW << " "  << boxH << std::endl;
+            while (!reachedLimit && nextX < maxX) {
+                float right = (nextX + width / bestNx > maxX) ? maxX : (nextX + width / bestNx);
+                BoundingBox box(Point2D(nextX, bottom), Point2D(right, top));
+                auto instances = grid.getCellInstancesWithin(box);
 
                 // Only add unvisited instances
-                unsigned int bitsum = 0;
-                std::vector<const Instance*> toAdd;
                 for (const auto& inst : instances) {
-                    if (visited.count(&inst) == 0 && localVisited.count(&inst) == 0) {
-                        bitsum += inst.getBitsize();
-                        toAdd.push_back(&inst);
-                        if (bitsum + current.totalBitsize > bitsizeLimit) break;
-                        // We reached the limit for this bin. Add the rest to the unvisited;
+                    if (visited.count(inst) == 0) {
+                        if (current.totalBitsize + inst.getBitsize() > bitsizeLimit && !current.instances.empty()) {
+                            reachedLimit = true;
+                            break;
+                        }
+                        current.addInstance(inst);
+                        visited.insert(inst);
                     }
                 }
-
-                
-
-                for (const Instance* inst : toAdd) {
-                    current.instances.insert(*inst);
-                    current.totalBitsize += inst->getBitsize();
-                    localVisited.insert(inst);
-                }
-
-                // Decide which direction to grow
-                if (bitsum < bitsizeLimit - maxBitSize) {
-                    float boxRatio = boxW / boxH;
-                    if (boxRatio > ratio) {
-                        boxH += binSize;
-                        if (boxY + boxH > maxY) boxH = maxY - boxY;
-                    } else {
-                        boxW += binSize;
-                        if (boxX + boxW > maxX) boxW = maxX - boxX;
-                    }
-                } else {
-                    cout << "bitsum is bigger that limit" << endl;
-                    break;
-                }
+                if (!reachedLimit)
+                    nextX = right;
             }
 
-            // Mark all added as visited
-            for (const auto& inst : current.instances) {
-                visited.insert(&inst);
-            }
-
-            if (!current.instances.empty()) {
+            if (!current.instances.empty())
                 partitions.push_back(std::move(current));
-            }
 
-            // Move to next region in X
-            startX += binSize;
+            curX = (curX == nextX) ? curX + width / bestNx : nextX; // Avoid infinite loop if nothing was added
         }
-        // Move to next region in Y
-        startY += binSize;
-    }*/
-}
+    }
 
+    // TODO: 
+
+}
 void Partitioner::partitionNearby() {
     partitions.clear();
 

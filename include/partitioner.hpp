@@ -29,6 +29,7 @@ public:
     float getPartitionsTotalRoutingLength();
     size_t getPartitionAverageBitSize();
     size_t getViolatingBitLimitPartitionCount();
+    size_t countGridInstancesMissedInPartitions() const;
 
     // Returns the created partitions
     const std::vector<Partition>& getPartitions();
