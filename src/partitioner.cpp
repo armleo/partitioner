@@ -301,7 +301,6 @@ void Partitioner::Partition::removeInstance(Instance inst) {
     centerLoc.x = sumX / sumBits;
     centerLoc.y = sumY / sumBits;
 }
-
 void Partitioner::partitionLocalized() {
     partitions.clear();
 
@@ -334,6 +333,7 @@ void Partitioner::partitionLocalized() {
         }
     }
 
+    float binW = width / bestNx;
     float binH = height / bestNy;
 
     // Track visited instances to avoid duplicates
@@ -345,40 +345,45 @@ void Partitioner::partitionLocalized() {
 
         float curX = minX;
         while (curX < maxX) {
-            Partition current;
-            float nextX = curX;
-            bool reachedLimit = false;
+            // Gather all unvisited instances in the current window
+            float right = (curX + binW > maxX) ? maxX : (curX + binW);
+            BoundingBox box(Point2D(curX, bottom), Point2D(right, top));
+            auto allInstances = grid.getCellInstancesWithin(box);
 
-            while (!reachedLimit && nextX < maxX) {
-                float right = (nextX + width / bestNx > maxX) ? maxX : (nextX + width / bestNx);
-                BoundingBox box(Point2D(nextX, bottom), Point2D(right, top));
-                auto instances = grid.getCellInstancesWithin(box);
-
-                // Only add unvisited instances
-                for (const auto& inst : instances) {
-                    if (visited.count(inst) == 0) {
-                        if (current.totalBitsize + inst.getBitsize() > bitsizeLimit && !current.instances.empty()) {
-                            reachedLimit = true;
-                            break;
-                        }
-                        current.addInstance(inst);
-                        visited.insert(inst);
-                    }
+            // Filter only unvisited
+            std::vector<Instance> unassigned;
+            for (const auto& inst : allInstances) {
+                if (visited.count(inst) == 0) {
+                    unassigned.push_back(inst);
                 }
-                if (!reachedLimit)
-                    nextX = right;
+            }
+            if (unassigned.empty()) {
+                curX = right;
+                continue;
             }
 
-            if (!current.instances.empty())
-                partitions.push_back(std::move(current));
-
-            curX = (curX == nextX) ? curX + width / bestNx : nextX; // Avoid infinite loop if nothing was added
+            size_t idx = 0;
+            while (idx < unassigned.size()) {
+                Partition current;
+                // Fill partition up to bitsizeLimit
+                while (idx < unassigned.size() && current.totalBitsize + unassigned[idx].getBitsize() <= bitsizeLimit) {
+                    current.addInstance(unassigned[idx]);
+                    visited.insert(unassigned[idx]);
+                    ++idx;
+                }
+                // If partition is not empty, store it
+                if (!current.instances.empty())
+                    partitions.push_back(std::move(current));
+                // If not all instances fit, continue with the same window (do not advance curX)
+                // idx now points to the first unassigned instance not yet included
+                // If all are assigned, break and move to next window
+            }
+            curX = right;
         }
     }
-
-    // TODO: 
-
 }
+
+
 void Partitioner::partitionNearby() {
     partitions.clear();
 
