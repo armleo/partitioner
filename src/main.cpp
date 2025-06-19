@@ -39,9 +39,9 @@ int main(int argc, char** argv) {
 
     // Only run these combinations:
     std::vector<RunConfig> runs = {
-        {"COARSE", &coarseGrid, {"HASHMAP",   &Partitioner::partition}},
+        {"COARSE", &coarseGrid, {"HASHMAP",   &Partitioner::partitionHashmap}},
         {"FINE",   &fineGrid,   {"LOCALIZE", &Partitioner::partitionLocalized}},
-        {"COARSE", &coarseGrid, {"MERGE",    &Partitioner::partitionMerging}},
+        {"COARSE", &coarseGrid, {"MERGING",    &Partitioner::partitionMerging}},
         {"COARSE", &coarseGrid, {"NEARBY",    &Partitioner::partitionNearby}}
     };
 

@@ -21,7 +21,7 @@ public:
     Partitioner(InstanceGrid& grid, unsigned int bitsizeLimit);
 
     // Performs the partitioning
-    void partition();
+    void partitionHashmap();
     void partitionLocalized();
     void partitionNearby();
     void partitionMerging();

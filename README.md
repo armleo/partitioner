@@ -55,7 +55,7 @@ Complexity: Linear hash map operations, but quality depends on initial distribut
 
 The main advantage of this method is that it produces results very quickly. The runtime of the commercial tool was measured in minutes. The same algorithm was implemented here for one-to-one comparison. Then the location based hashing was used instead. It yielded better results. Original reimplementation cannot be published.
 
-## 3️⃣ Merge
+## 3️⃣ Merging
 
 Divides the design into equal regions and moves cells to balance partition sizes.
 
@@ -63,7 +63,7 @@ Complexity: Initial splitting is O(log N), but rebalancing operations can approa
 
 Notes: Balances partition sizes directly but may create less optimal routing depending on initial placement.
 
-## 4️⃣ Localized (Optimized Merge)
+## 4️⃣ Localized
 
 An improved version of Merge that uses a grid-based "binning" approach.
 
