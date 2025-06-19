@@ -124,9 +124,9 @@ size_t Partitioner::countGridInstancesMissedInPartitions() const {
 Partitioner::Partitioner(InstanceGrid& grid, unsigned int bitsizeLimit)
     : grid(grid), bitsizeLimit(bitsizeLimit) {}
 
-size_t Partitioner::getPartitionAverageBitSize() {
+float Partitioner::getPartitionAverageBitSize() {
     if (partitions.empty()) return 0;
-    size_t total = 0;
+    float total = 0.0;
     for (const auto& partition : partitions) {
         total += partition.totalBitsize;
     }
@@ -401,19 +401,22 @@ void Partitioner::partitionLocalized() {
                     unassigned.push_back(inst);
                 }
             }
-
-            size_t idx = 0;
-            while (idx < unassigned.size()) {
-                Partition current;
-                while (idx < unassigned.size() && current.totalBitsize + unassigned[idx].getBitsize() <= bitsizeLimit) {
-                    current.addInstance(unassigned[idx]);
-                    handled.insert(unassigned[idx]);
-                    ++idx;
+            
+            for (auto inst : unassigned) {
+                current.addInstance(inst);
+                handled.insert(inst);
+                if(current.totalBitsize >= bitsizeLimit - grid.getMaxBitSize()) {
+                    partitions.push_back(current);
+                    current = Partition();
                 }
-                if (!current.instances.empty())
-                    partitions.push_back(std::move(current));
             }
+
             curY = top;
+        }
+
+        if(!current.instances.empty()) {
+            partitions.push_back(current);
+            current = Partition();
         }
     }
 }

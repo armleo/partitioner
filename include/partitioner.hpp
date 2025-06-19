@@ -27,7 +27,7 @@ public:
     void partitionMerging();
 
     float getPartitionsTotalRoutingLength();
-    size_t getPartitionAverageBitSize();
+    float getPartitionAverageBitSize();
     size_t getViolatingBitLimitPartitionCount();
     size_t countGridInstancesMissedInPartitions() const;
 
