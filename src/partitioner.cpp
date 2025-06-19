@@ -1,78 +1,49 @@
 #include "partitioner.hpp"
-#include <QPainter>
 #include <algorithm>
 #include <iostream>
 
 using namespace std;
 
-// Modified DotWidget to take a vector of sets and draw each set in a different color
-DotWidget::DotWidget(InstanceGrid & grid, std::vector<Partitioner::Partition> partitions, QWidget* parent)
-    : QWidget(parent), partitions(std::move(partitions)), grid(grid) {}
 
-void DotWidget::paintEvent(QPaintEvent*) {
-    QPainter painter(this);
-    painter.setRenderHint(QPainter::Antialiasing);
+void Partitioner::Partition::addInstance(Instance inst) {
+    instances.insert(inst);
+    totalBitsize += inst.getBitsize();
 
-    // Color palette for up to 10 partitions, will repeat if more
-    static const QColor colors[] = {
-        Qt::red, Qt::blue, Qt::green, Qt::magenta, Qt::darkYellow,
-        Qt::cyan, Qt::darkRed, Qt::darkGreen, Qt::darkBlue, Qt::black
-    };
-    constexpr int colorCount = sizeof(colors) / sizeof(colors[0]);
+    // Update center of weight (weighted by bitsize)
+    float totalWeight = static_cast<float>(totalBitsize);
+    if (instances.size() == 1) {
+        centerLoc = inst.getLocation();
+    } else {
+        // Weighted average update
+        float prevWeight = totalWeight - inst.getBitsize();
+        centerLoc.x = (centerLoc.x * prevWeight + inst.getLocation().x * inst.getBitsize()) / totalWeight;
+        centerLoc.y = (centerLoc.y * prevWeight + inst.getLocation().y * inst.getBitsize()) / totalWeight;
+    }
+}
 
-    
-    // Find min/max for scaling
-    float minX = grid.getBounds().ll.x;
-    float maxX = grid.getBounds().ur.x;
-    float minY = grid.getBounds().ll.y;
-    float maxY = grid.getBounds().ur.y;
+void Partitioner::Partition::removeInstance(Instance inst) {
+    auto it = instances.find(inst);
+    if (it == instances.end()) return;
 
-    float dataWidth = maxX - minX;
-    float dataHeight = maxY - minY;
+    unsigned int removedBitsize = it->getBitsize();
+    instances.erase(it);
+    totalBitsize -= removedBitsize;
 
-    float widgetWidth = width() - 20;
-    float widgetHeight = height() - 20;
-
-    // Keep aspect ratio
-    float scale = 1.0f;
-    if (dataWidth > 0 && dataHeight > 0) {
-        float scaleX = widgetWidth / dataWidth;
-        float scaleY = widgetHeight / dataHeight;
-        scale = std::min(scaleX, scaleY);
+    // Recalculate center of weight (weighted by bitsize)
+    if (instances.empty()) {
+        centerLoc = Point2D(0, 0);
+        return;
     }
 
-    // Centering offsets
-    float offsetX = 10 + (widgetWidth - scale * dataWidth) / 2.0f;
-    float offsetY = 10 + (widgetHeight - scale * dataHeight) / 2.0f;
-
-    for (const auto& vect : grid.getGrid()) {
-        for (auto inst : vect.second) {
-            painter.setPen(Qt::white);
-            painter.setBrush(Qt::white);
-            int px = static_cast<int>(offsetX + (inst.getX() - minX) * scale);
-            int py = static_cast<int>(offsetY + (inst.getY() - minY) * scale);
-            painter.drawEllipse(QPoint(px, py), 2, 2);
-        }
+    float sumX = 0.0f, sumY = 0.0f;
+    unsigned int sumBits = 0;
+    for (const auto& i : instances) {
+        sumX += i.getLocation().x * i.getBitsize();
+        sumY += i.getLocation().y * i.getBitsize();
+        sumBits += i.getBitsize();
     }
-
-    // Draw each partition in a different color
-    size_t idx = 0;
-    for (const auto& set : partitions) {
-        painter.setPen(colors[idx % colorCount]);
-        painter.setBrush(colors[idx % colorCount]);
-        for (const auto& inst : set.instances) {
-            int px = static_cast<int>(offsetX + (inst.getX() - minX) * scale);
-            int py = static_cast<int>(offsetY + (inst.getY() - minY) * scale);
-            painter.drawEllipse(QPoint(px, py), 2, 2);
-        }
-        ++idx;
-    }
-
-    // Draw scale text at the bottom
-    painter.setPen(Qt::blue);
-    QString scaleText = QString("X: [%1, %2], Y: [%3, %4]")
-        .arg(minX).arg(maxX).arg(minY).arg(maxY);
-    painter.drawText(10, height() - 10, scaleText);
+    centerLoc.x = sumX / sumBits;
+    centerLoc.y = sumY / sumBits;
 }
 
 const float Partitioner::Partition::getTotalRoutingDistance() {
@@ -141,6 +112,8 @@ size_t Partitioner::getViolatingBitLimitPartitionCount() {
     return count;
 }
 
+
+
 void Partitioner::partitionMerging() {
     partitions.clear();
 
@@ -188,12 +161,13 @@ void Partitioner::partitionMerging() {
             auto instances = grid.getCellInstancesWithin(binBox);
 
             Partition part;
+            part.centerLoc.x = (left + right) / 2.0f;
+            part.centerLoc.y = (bottom + top) / 2.0f;
             for (const auto& inst : instances) {
                 part.addInstance(inst);
-                
             }
-            if (!part.instances.empty())
-                partitions.push_back(std::move(part));
+            // Always push the partition, even if empty
+            partitions.push_back(std::move(part));
         }
     }
 
@@ -206,7 +180,7 @@ void Partitioner::partitionMerging() {
         for (size_t i = 0; i < partitions.size(); ++i) {
             if (partitions[i].totalBitsize > bitsizeLimit)
                 overIdx.push_back(i);
-            else if (partitions[i].totalBitsize < bitsizeLimit)
+            else if (partitions[i].totalBitsize < bitsizeLimit - grid.getMaxBitSize())
                 underIdx.push_back(i);
         }
         if (overIdx.empty() || underIdx.empty()) break;
@@ -261,46 +235,8 @@ void Partitioner::partitionMerging() {
     }
 }
 
-void Partitioner::Partition::addInstance(Instance inst) {
-    instances.insert(inst);
-    totalBitsize += inst.getBitsize();
 
-    // Update center of weight (weighted by bitsize)
-    float totalWeight = static_cast<float>(totalBitsize);
-    if (instances.size() == 1) {
-        centerLoc = inst.getLocation();
-    } else {
-        // Weighted average update
-        float prevWeight = totalWeight - inst.getBitsize();
-        centerLoc.x = (centerLoc.x * prevWeight + inst.getLocation().x * inst.getBitsize()) / totalWeight;
-        centerLoc.y = (centerLoc.y * prevWeight + inst.getLocation().y * inst.getBitsize()) / totalWeight;
-    }
-}
 
-void Partitioner::Partition::removeInstance(Instance inst) {
-    auto it = instances.find(inst);
-    if (it == instances.end()) return;
-
-    unsigned int removedBitsize = it->getBitsize();
-    instances.erase(it);
-    totalBitsize -= removedBitsize;
-
-    // Recalculate center of weight (weighted by bitsize)
-    if (instances.empty()) {
-        centerLoc = Point2D(0, 0);
-        return;
-    }
-
-    float sumX = 0.0f, sumY = 0.0f;
-    unsigned int sumBits = 0;
-    for (const auto& i : instances) {
-        sumX += i.getLocation().x * i.getBitsize();
-        sumY += i.getLocation().y * i.getBitsize();
-        sumBits += i.getBitsize();
-    }
-    centerLoc.x = sumX / sumBits;
-    centerLoc.y = sumY / sumBits;
-}
 void Partitioner::partitionLocalized() {
     partitions.clear();
 

@@ -5,6 +5,7 @@
 #include <instance.hpp>
 #include <instanceGrid.hpp>
 #include "partitioner.hpp"
+#include "viewer.hpp"
 
 struct AlgoInfo {
     std::string name;
@@ -29,9 +30,12 @@ int main(int argc, char** argv) {
     InstanceGrid fineGrid(1.0);
 
     // Generate and load instances
-    coarseGrid.generateGaussianClustersToFile("outfile.txt", 1000000, 10, BoundingBox(Point2D(0.0f, 0.0f), Point2D(100.0f, 200.0f)), 10.0f, 8);
+    coarseGrid.generateGaussianClustersToFile("outfile.txt", 100000, 10, BoundingBox(Point2D(0.0f, 0.0f), Point2D(100.0f, 200.0f)), 10.0f, 8);
     coarseGrid.readInstancesFromFile("outfile.txt");
     fineGrid.readInstancesFromFile("outfile.txt");
+
+    std::cout << "INSTANCES: " << fineGrid.getInstanceCount() << " BITS: " << fineGrid.getTotalBitSize() << std::endl;
+    
 
     // Only run these combinations:
     std::vector<RunConfig> runs = {
@@ -46,8 +50,6 @@ int main(int argc, char** argv) {
     std::vector<Partitioner*> partitioners;
 
     for (const auto& run : runs) {
-        std::cout << "Grid " << run.gridType << " instance count: " << run.grid->getInstanceCount() << std::endl;
-
         auto partitioner = new Partitioner(*run.grid, 1000);
         partitioners.push_back(partitioner);
 
@@ -57,18 +59,20 @@ int main(int argc, char** argv) {
         duration<double, std::milli> ms_double = t2 - t1;
 
         auto partitions = partitioner->getPartitions();
-        std::cout << "Algo " << run.algo.name
-                  << " GRIDTYPE: " << run.gridType
-                  << " MISSED (DNF if non zero): " << partitioner->countGridInstancesMissedInPartitions()
-                  << " UNBALANCED (DNF if non zero): " << partitioner->getViolatingBitLimitPartitionCount()
-                  << " PARTITIONS: " << partitions.size()
-                  << " AVERAGE: " << partitioner->getPartitionAverageBitSize()
-                  << " ROUTE_LEN: " << partitioner->getPartitionsTotalRoutingLength()
-                  << "   RUNTIME: " << ms_double.count() << "ms" << std::endl;
-
+        std::cout << "Algo " << run.algo.name << " w/ " << run.gridType << std::endl
+                  << " RUNTIME: " << ms_double.count() << "ms" << std::endl
+                  << " ROUTE_LEN: " << partitioner->getPartitionsTotalRoutingLength() << std::endl
+                  ;
+        std::cout
+                  << " MISSED (DNF if non zero): " << partitioner->countGridInstancesMissedInPartitions() << std::endl
+                  << " UNBALANCED (DNF if non zero): " << partitioner->getViolatingBitLimitPartitionCount() << std::endl
+                  << " PARTITIONS: " << partitions.size() << std::endl
+                  << " AVERAGE: " << partitioner->getPartitionAverageBitSize() << std::endl
+                  ;
+        
         auto* widget = new DotWidget(*run.grid, partitions);
-        width = int(ceil(std::max(float(width), run.grid->getBounds().ur.x)));
-        height = int(ceil(std::max(float(height), run.grid->getBounds().ur.y)));
+        width = int(ceil(std::min(float(width), run.grid->getBounds().ur.x * 4)));
+        height = int(ceil(std::min(float(height), run.grid->getBounds().ur.y * 4)));
         widget->resize(width, height);
         widget->setWindowTitle(QString("Dots - %1 - %2").arg(QString::fromStdString(run.algo.name), QString::fromStdString(run.gridType)));
         widget->show();
