@@ -29,13 +29,13 @@ int main(int argc, char** argv) {
     InstanceGrid fineGrid(1.0);
 
     // Generate and load instances
-    coarseGrid.generateGaussianClustersToFile("outfile.txt", 100000, 10, BoundingBox(Point2D(0.0f, 0.0f), Point2D(100.0f, 200.0f)), 10.0f, 8);
+    coarseGrid.generateGaussianClustersToFile("outfile.txt", 1000000, 10, BoundingBox(Point2D(0.0f, 0.0f), Point2D(100.0f, 200.0f)), 10.0f, 8);
     coarseGrid.readInstancesFromFile("outfile.txt");
     fineGrid.readInstancesFromFile("outfile.txt");
 
     // Only run these combinations:
     std::vector<RunConfig> runs = {
-        {"COARSE", &coarseGrid, {"RANDOM",   &Partitioner::partition}},
+        {"COARSE", &coarseGrid, {"HASHMAP",   &Partitioner::partition}},
         {"FINE",   &fineGrid,   {"LOCALIZE", &Partitioner::partitionLocalized}},
         {"COARSE", &coarseGrid, {"MERGE",    &Partitioner::partitionMerging}},
         {"COARSE", &coarseGrid, {"NEARBY",    &Partitioner::partitionNearby}}
