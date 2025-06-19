@@ -41,11 +41,11 @@ Each cell is merged into its nearest unmerged cell.
 
     Notes: Simple heuristic, but can struggle when cells are not uniformly distributed.
 
-    This is the algorithm employed by Vendor number two. It just selects the nearest cell to group to. While this might be counterintiuitve. It does not yield shortest distance as it might group close cells together resulting in lack of "mid point" stops. Without this stops this means that with small partitions the partitions might be starved of instances and have to reach cells that are FAR away to bit bit limit requirements.
+    This is the algorithm employed by Vendor. It just selects the nearest cell to group to. While this might be counterintiuitve. It does not yield shortest distance as it might group close cells together resulting in lack of "mid point" stops. Without this stops this means that with small partitions the partitions might be starved of instances and have to reach cells that are FAR away to reach bit limit requirements.
 
 ## 2️⃣ Vendor (Hashmap)
 
-Inspired by a commercial DFT partitioner. O(N) complexity due to using hashmaps with O(N) hashing. Cells with the same hash are merged together.
+Inspired by a commercial DFT partitioner vendor number two. O(N) complexity due to using hashmaps with O(N) hashing. Cells with the same hash are merged together.
 
     The commercial tool uses hash maps based on cell names and hierarchy (without location awareness).
 

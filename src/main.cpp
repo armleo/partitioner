@@ -58,7 +58,7 @@ int main(int argc, char** argv) {
 
         auto partitions = partitioner->getPartitions();
         std::cout << "Algo " << run.algo.name
-                  << " GRID TYPE: " << run.gridType
+                  << " GRIDTYPE: " << run.gridType
                   << " MISSED (DNF if non zero): " << partitioner->countGridInstancesMissedInPartitions()
                   << " UNBALANCED (DNF if non zero): " << partitioner->getViolatingBitLimitPartitionCount()
                   << " PARTITIONS: " << partitions.size()
