@@ -6,72 +6,79 @@
 #include <instanceGrid.hpp>
 #include "partitioner.hpp"
 
+struct AlgoInfo {
+    std::string name;
+    void (Partitioner::*method)();
+};
 
 int main(int argc, char** argv) {
     using std::chrono::high_resolution_clock;
-    using std::chrono::duration_cast;
     using std::chrono::duration;
-    using std::chrono::milliseconds;
+    using std::chrono::duration_cast;
 
-
-
-    InstanceGrid instgrid(10.0);
-
-    //instgrid.generateRandomInstancesToFile("outfile.txt", 1000000, BoundingBox(Point2D(0.0f, 0.0f), Point2D(100.0f, 200.0f)), 8);
-    instgrid.generateGaussianClustersToFile("outfile.txt", 100000, 10, BoundingBox(Point2D(0.0f, 0.0f), Point2D(100.0f, 200.0f)),
-                                                 10.0f, 8);
-    instgrid.readInstancesFromFile("outfile.txt");
-    
-    auto width = 800;
-    auto height = 600;
     QApplication app(argc, argv);
 
-    std::cout << instgrid.getInstanceCount() << std::endl;
-    
-    std::vector<Partitioner*> partitionersList;
+    // Prepare grids
+    InstanceGrid coarseGrid(10.0);
+    InstanceGrid fineGrid(1.0);
 
-    std::string name;
+    // Generate and load instances
+    coarseGrid.generateGaussianClustersToFile("outfile.txt", 100000, 10, BoundingBox(Point2D(0.0f, 0.0f), Point2D(100.0f, 200.0f)), 10.0f, 8);
+    coarseGrid.readInstancesFromFile("outfile.txt");
+    fineGrid.readInstancesFromFile("outfile.txt");
 
-    for(int i = 0; i < 4; i++) {
-        
-        auto partitioner = new Partitioner(instgrid, 1000);
-        partitionersList.push_back(partitioner);
-        
+    std::vector<std::pair<std::string, InstanceGrid*>> grids = {
+        {"COARSE", &coarseGrid},
+        {"FINE", &fineGrid}
+    };
 
-        //partitioner.partitionNearby();
+    std::vector<AlgoInfo> algos = {
+        {"RANDOM",    &Partitioner::partition},
+        {"LOCALIZE",  &Partitioner::partitionLocalized},
+        {"MERGE",     &Partitioner::partitionMerging},
+        {"NEAREST",   &Partitioner::partitionNearby}
+    };
 
-        auto t1 = high_resolution_clock::now();
-        if (i == 0) {partitioner->partition(); name = "RANDOM";}
-        if (i == 1) {partitioner->partitionLocalized(); name = "LOCALIZE";}
-        if (i == 2) {partitioner->partitionMerging(); name = "MERGE";}
-        if (i == 3) {partitioner->partitionNearby(); name = "NEAREST";}
-        auto t2 = high_resolution_clock::now();
-        duration<double, std::milli> ms_double = t2 - t1;
+    int width = 800, height = 600;
+    std::vector<DotWidget*> widgets;
+    std::vector<Partitioner*> partitioners;
 
-        auto partitions = partitioner->getPartitions();
-        std::cout << "Algo " << name << " MISSED: " << partitioner->countGridInstancesMissedInPartitions() << " PARTITIONS: " << partitions.size() << " AVERAGE: " << partitioner->getPartitionAverageBitSize() << " UNBALANCED: " << partitioner->getViolatingBitLimitPartitionCount() << " ROUTE_LEN: " << partitioner->getPartitionsTotalRoutingLength() << "   RUNTIME: " << ms_double.count() << "ms" << std::endl;
-        /*
-        for (auto part : partitions) {
-            std::cout << "    X: " << part.centerLoc.x << " Y: " << part.centerLoc.y << " BITSIZE: " << part.totalBitsize << std::endl;
-        }*/
+    for (const auto& gridPair : grids) {
+        const std::string& gridType = gridPair.first;
+        InstanceGrid& grid = *gridPair.second;
+
+        std::cout << "Grid " << gridType << " instance count: " << grid.getInstanceCount() << std::endl;
+
+        for (const auto& algo : algos) {
+            auto partitioner = new Partitioner(grid, 1000);
+            partitioners.push_back(partitioner);
+
+            auto t1 = high_resolution_clock::now();
+            (partitioner->*algo.method)();
+            auto t2 = high_resolution_clock::now();
+            duration<double, std::milli> ms_double = t2 - t1;
+
+            auto partitions = partitioner->getPartitions();
+            std::cout << "Algo " << algo.name
+                      << " GRID TYPE: " << gridType
+                      << " MISSED (DNF if non zero): " << partitioner->countGridInstancesMissedInPartitions()
+                      << " UNBALANCED (DNF if non zero): " << partitioner->getViolatingBitLimitPartitionCount()
+                      << " PARTITIONS: " << partitions.size()
+                      << " AVERAGE: " << partitioner->getPartitionAverageBitSize()
+                      << " ROUTE_LEN: " << partitioner->getPartitionsTotalRoutingLength()
+                      << "   RUNTIME: " << ms_double.count() << "ms" << std::endl;
+
+            // Show widget
+            auto* widget = new DotWidget(grid, partitions);
+            width = int(ceil(std::max(float(width), grid.getBounds().ur.x)));
+            height = int(ceil(std::max(float(height), grid.getBounds().ur.y)));
+            widget->resize(width, height);
+            widget->setWindowTitle(QString("Dots - %1 - %2").arg(QString::fromStdString(algo.name), QString::fromStdString(gridType)));
+            widget->show();
+            widgets.push_back(widget);
+        }
     }
 
-    
-    int i = 0;
-    for(auto partitioner : partitionersList) {
-        auto partitions = partitioner->getPartitions();
-        DotWidget* widget = new DotWidget(instgrid, partitions);
-        widget->resize(width, height);
-        if (i == 0) {name = "RANDOM";}
-        if (i == 1) {name = "LOCALIZE";}
-        if (i == 2) {name = "MERGE";}
-        if (i == 3) {name = "NEAREST";}
-        widget->setWindowTitle(QString("Dots - %1").arg(QString::fromStdString(name)));
-        widget->show();
-        ++i;
-    }
-    // TODO: Delete partionersList instances and DotWidget
+    // TODO: Properly delete partitioners and widgets if needed
     return app.exec();
-    
-    
 }
