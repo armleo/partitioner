@@ -34,6 +34,7 @@ int main(int argc, char** argv) {
             std::cout << "|-----------|---------|-----------|--------------|-----------|\n";
 
     for (size_t instCount = 10000; instCount < 50000; instCount *= 2) {
+        instCount = 100000;
         // Generate and load instances
         std::string filename = "outfile" + std::to_string(instCount) + ".txt";
         coarseGrid.generateGaussianClustersToFile(filename, instCount, 10, BoundingBox(Point2D(0.0f, 0.0f), Point2D(100.0f, 200.0f)), 10.0f, 8);
@@ -88,8 +89,8 @@ int main(int argc, char** argv) {
                     ;
             */
             auto* widget = new DotWidget(*run.grid, partitions);
-            width = int(ceil(std::min(float(width), run.grid->getBounds().ur.x)));
-            height = int(ceil(std::min(float(height), run.grid->getBounds().ur.y)));
+            width = int(ceil(std::min(float(width), run.grid->getBounds().ur.x * 4)));
+            height = int(ceil(std::min(float(height), run.grid->getBounds().ur.y * 4)));
             widget->resize(width, height);
             widget->setWindowTitle(
                 QString("Dots - %1 - %2 - %3")

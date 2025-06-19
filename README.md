@@ -1,3 +1,7 @@
+# DFT Partitioner
+
+This tool takes list of instances, x, y and bitsize. Then it generates partitions with each cell below maxBitSize. The best algorithm is the "Optimized" variant which produces localized partitions using grid based lookup. The lookup is O(1) and only the partition creation forces O(N) complexity.
+
 # Motivation
 
 In designs that use DFT (Design For Test) logic, partitioning is often required when using centralized compressor/decompressor architectures. While setup timing is typically not very sensitive for DFT logic, the added nets can significantly increase routing congestion. If the DFT cells are spread too far apart, unnecessary long routing paths are created. Finding the optimal grouping becomes computationally expensive, as evaluating all possible combinations scales roughly as O(N²), where N is the number of cells.
@@ -59,9 +63,9 @@ The main advantage of this method is that it produces results very quickly. The 
 
 Divides the design into equal regions and moves cells to balance partition sizes.
 
-Complexity: Initial splitting is O(log N), but rebalancing operations can approach O(N²).
+Complexity: Initial splitting is O(log N), but rebalancing operations can approach O(NlogN) up to O(N^2).
 
-Notes: Balances partition sizes directly but may create less optimal routing depending on initial placement.
+Notes: Balances partition sizes directly but runtime is quite high.
 
 ## 4️⃣ Localized
 
@@ -71,11 +75,11 @@ The design is divided into small bins; merging operates at bin-level instead of 
 
 User Input: Only requires a grid size parameter.
 
-Tradeoff: Smaller grids yield better routing quality but increase runtime; larger grids reduce runtime but may result in slightly worse routing.
+Tradeoff: Smaller grids yield better routing quality but increase runtime; larger grids reduce runtime but may result in worse routing.
 
-Complexity: O(N) in ideal cases (when bins are naturally balanced), O(N log N) in more difficult cases.
+Complexity: O(N) in average cases (when bins are naturally balanced), where the bins are not natuarally balanced and have to split the routing length will be degraded.
 
-Notes: If bins are well balanced, only minimal cell movement is needed (usually within one grid unit).
+Notes: If bins are well balanced, only minimal cell movement is needed (usually within one grid unit). Bin balancing depends on selected grid size.
 
 
 | Algorithm | Grid    | Instances | Runtime (ms) | Route Len |
@@ -98,3 +102,6 @@ Notes: If bins are well balanced, only minimal cell movement is needed (usually 
 | MERGING  |  N/A   | 40000 | 2900.7 | 19743.1 |
 | NEARBY   |  N/A   | 40000 | 17440.7 | 20064.8 |
 | | | | | |
+
+
+![Partition Example](docs/partition2.png)
