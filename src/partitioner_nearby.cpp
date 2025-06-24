@@ -1,5 +1,4 @@
 #include "partitioner.hpp"
-
 void Partitioner::partitionNearby() {
     partitions.clear();
 
@@ -13,44 +12,30 @@ void Partitioner::partitionNearby() {
 
     while (!unassigned.empty()) {
         Partition current;
-        // Start with the first unassigned instance
-        const Instance* seed = *unassigned.begin();
-        std::vector<const Instance*> toVisit = {seed};
+        // Start with any unassigned instance
+        const Instance* currentInst = *unassigned.begin();
+        current.addInstance(*currentInst);
+        unassigned.erase(currentInst);
 
-        while (!toVisit.empty()) {
-            // Find the nearest unassigned instance to any in toVisit
+        while (current.totalBitsize < bitsizeLimit && !unassigned.empty()) {
+            // Find the nearest unassigned instance to currentInst
             const Instance* nearest = nullptr;
             float minDist = std::numeric_limits<float>::max();
-            for (const Instance* from : toVisit) {
-                for (const Instance* cand : unassigned) {
-                    if (from == cand) continue;
-                    float dist = from->distanceTo(*cand);
-                    if (dist < minDist) {
-                        minDist = dist;
-                        nearest = cand;
-                    }
+            for (const Instance* cand : unassigned) {
+                float dist = currentInst->distanceTo(*cand);
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearest = cand;
                 }
             }
-
-            // Add all in toVisit to the partition
-            for (const Instance* inst : toVisit) {
-                if (unassigned.count(inst) &&
-                    current.totalBitsize + inst->getBitsize() <= bitsizeLimit) {
-                    current.addInstance(*inst);
-                    unassigned.erase(inst);
-                }
-            }
-
-            // Prepare next toVisit
-            toVisit.clear();
-            if (nearest && current.totalBitsize + nearest->getBitsize() <= bitsizeLimit) {
-                toVisit.push_back(nearest);
-            }
+            if (!nearest) break;
+            if (current.totalBitsize + nearest->getBitsize() > bitsizeLimit)
+                break;
+            current.addInstance(*nearest);
+            unassigned.erase(nearest);
+            currentInst = nearest;
         }
-
-        if (!current.instances.empty()) {
+        if (!current.instances.empty())
             partitions.push_back(std::move(current));
-        }
     }
 }
-
